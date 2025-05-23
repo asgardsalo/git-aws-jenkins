@@ -70,3 +70,27 @@ variable "ec2_endpoint_subnet_ids" {
     type        = list(string)
     default     = []
 }
+
+variable "enable_kms_endpoint" {
+    description = "Should be true if you want to provision an KMS endpoint to the VPC"
+    type        = bool
+    default     = false
+}
+
+variable "kms_endpoint_security_group_ids" {
+    description = "The ID of one or more security groups to associate with the network interface for KMS endpoint"
+    type        = list(string)
+    default     = []
+}
+
+variable "kms_endpoint_private_dns_enabled" {
+    description = "Whether or not to associate a private hosted zone with the specific VPC for KMS endpoint"
+    type        = bool
+    default     = false
+}
+
+variable "kms_endpoint_subnet_ids" {
+    description = "The ID of one or more subnets in which to create a network interface for KMS endpoint. Only a single subnet within AZ is supported. If omitted, private subnets will be used."
+    type        = list(string)
+    default     = []
+}
