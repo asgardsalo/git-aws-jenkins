@@ -1,3 +1,4 @@
+# This file contains all variables for VPC creation
 variable "vpc_id" {
     description = "vpc id"
     type        = string
