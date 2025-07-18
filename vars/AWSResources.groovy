@@ -1,11 +1,11 @@
 def call (String regiSel, String res_sel) {
 
     stage('Input Parameters') {
-        switch (params.zone) {
+        switch (params.region) {
             case 'N. Virginia':
                 regiSel='us-east-1'
             break
-            case 'apac|':
+            case 'apac':
                 regiSel='us-east-1'
             break
             case 'europe':
