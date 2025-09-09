@@ -1,0 +1,41 @@
+pipeline {
+    agent any
+    stages {
+        stage('Check Docker') {
+            steps {
+                script {
+                    // Check if docker exists and is running
+                    def dockerInstalled = sh(script: "command -v docker >/dev/null 2>&1 && echo yes || echo no", returnStdout: true).trim()
+                    
+                    if (dockerInstalled == "yes") {
+                        echo "✅ Docker is installed."
+                        sh "docker --version"
+                    } else {
+                        echo "❌ Docker not installed. Installing now..."
+                        // Install Docker based on OS (example for Ubuntu/Debian)
+                        sh """
+                        sudo apt-get update -y
+                        sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
+                        curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+                        sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
+                        sudo apt-get update -y
+                        sudo apt-get install -y docker-ce
+                        sudo systemctl enable docker
+                        sudo systemctl start docker
+                        """
+                        echo "✅ Docker installed successfully."
+                        sh "docker --version"
+                    }
+                }
+            }
+        }
+        stage('Verify Docker Running') {
+            steps {
+                script {
+                    sh "sudo systemctl status docker || echo '⚠️ Docker might not be running'"
+                    sh "docker ps || echo '⚠️ Docker command failed'"
+                }
+            }
+        }
+    }
+}
