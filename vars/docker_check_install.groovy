@@ -24,14 +24,7 @@ def call () {
             echo "Docker Desktop already running."
         }
     }
-    stage('Verify Docker Running') {
-        steps {
-            script {
-                sh "sudo systemctl status docker || echo '⚠️ Docker might not be running'"
-                sh "docker ps || echo '⚠️ Docker command failed'"
-            }
-        }
-    }
+    
     post {
         failure {
             echo "Error"
