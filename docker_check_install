@@ -36,4 +36,12 @@ def call () {
             }
         }
     }
+    post {
+        failure {
+            echo "Error"
+        }
+        always {
+            cleanWs()
+        }
+    }
 }
