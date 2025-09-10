@@ -2,26 +2,26 @@ def call () {
 
     stage('Check Docker') {
         // Check if docker exists and is running
-        def dockerInstalled = sh(script: "command -v docker >/dev/null 2>&1 && echo yes || echo no", returnStdout: true).trim()
-                        
-        if (dockerInstalled == "yes") {
-            echo "✅ Docker is installed."
-            sh "docker --version"
+        def isRunning = sh(
+            script: "pgrep -f com.docker.backend >/dev/null && echo yes || echo no",
+            returnStdout: true
+            ).trim()
+
+        if (isRunning == "no") {
+            echo "Starting Docker Desktop..."
+            sh "open -a Docker"
+            // Wait until daemon is ready
+            timeout(time: 60, unit: 'SECONDS') {
+                waitUntil {
+                    def ready = sh(
+                        script: "docker system info >/dev/null 2>&1 && echo yes || echo no",
+                        returnStdout: true
+                    ).trim()
+                    return (ready == "yes")
+                }
+            }
         } else {
-            echo "❌ Docker not installed. Installing now..."
-            // Install Docker based on OS (example for Ubuntu/Debian)
-            sh """
-            sudo apt-get update -y
-            sudo apt-get install -y apt-transport-https ca-certificates curl software-properties-common
-            curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-            sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu \$(lsb_release -cs) stable"
-            sudo apt-get update -y
-            sudo apt-get install -y docker-ce
-            sudo systemctl enable docker
-            sudo systemctl start docker
-            """
-            echo "✅ Docker installed successfully."
-            sh "docker --version"
+            echo "Docker Desktop already running."
         }
     }
     stage('Verify Docker Running') {
