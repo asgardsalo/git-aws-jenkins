@@ -24,13 +24,4 @@ def call () {
             echo "Docker Desktop already running."
         }
     }
-    
-    post {
-        failure {
-            echo "Error"
-        }
-        always {
-            cleanWs()
-        }
-    }
 }
