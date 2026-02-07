@@ -1,4 +1,4 @@
-def call (String regiSel, String res_sel) {
+def call (String regiSel, String res_sel, String res_na) {
 
     stage('Input Parameters') {
         switch (params.region) {
@@ -56,6 +56,7 @@ def call (String regiSel, String res_sel) {
     }
 echo "${regiSel}"
 echo "${res_sel}"
+echo "${res_na}"
 
 /*// Define the parameters for the pipeline
     stage('Variable Creation') {
