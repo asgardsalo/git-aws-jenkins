@@ -7,8 +7,8 @@ def call (String regiSel, String res_sel) {
             break
             case 'Ohio':
                 regiSel='us-east-1'
-            break:
-            case 'N. Carolina'
+            break
+            case 'N. Carolina':
                 regiSel='us-west-1'
             break
             case 'Oregon':
