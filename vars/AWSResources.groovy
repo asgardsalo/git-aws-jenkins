@@ -5,13 +5,13 @@ def call (String regiSel, String res_sel) {
             case 'N. Virginia':
                 regiSel='us-east-1'
             break
-            case 'Ohio'
+            case 'Ohio':
                 regiSel='us-east-1'
-            break
+            break:
             case 'N. Carolina'
                 regiSel='us-west-1'
             break
-            case 'Oregon'
+            case 'Oregon':
                 regiSel='us-west-2'
             break
             case 'Mumbai':
