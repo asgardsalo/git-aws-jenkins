@@ -1,12 +1,12 @@
 def call (String regiSel, String res_sel, String res_na) {
-
+    
     stage('Input Parameters') {
         switch (params.region) {
             case 'N. Virginia':
                 regiSel='us-east-1'
             break
             case 'Ohio':
-                regiSel='us-east-1'
+                regiSel='us-east-2'
             break
             case 'N. Carolina':
                 regiSel='us-west-1'
@@ -55,6 +55,4 @@ def call (String regiSel, String res_sel, String res_na) {
         }
     }
     echo "${regiSel}"
-    echo "${res_sel}"
-    echo "${res_na}"
 }
