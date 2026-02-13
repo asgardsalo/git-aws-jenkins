@@ -54,5 +54,4 @@ def call (String regiSel, String res_sel, String res_na) {
             break
         }
     }
-    
 }
