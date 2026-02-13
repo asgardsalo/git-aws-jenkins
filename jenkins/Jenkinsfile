@@ -1,0 +1,120 @@
+pipeline {
+  agent any
+
+  stages {
+    stage('Checkout') {
+      steps {
+        checkout scm
+      }
+    }
+
+    stage('Validate Input') {
+      steps {
+        script {
+          validated = AWSResources(params)
+          echo "Validated parameters: ${validated}"
+        }
+      }
+    }
+    
+    stage('Create Branch') {
+      steps {
+        script {
+          BRANCH_NAME = "feature/${validated.resource}-${validated.name}-${env.BUILD_ID}"
+
+          sh """
+            git config user.email "jenkins@ci.local"
+            git config user.name "Jenkins CI"
+            git checkout -b ${BRANCH_NAME}
+          """
+        }
+      }
+    }
+    
+    {
+        sh """
+        # Rewrite remote URL to include token
+        git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@${env.GIT_URL.replaceFirst('https?://','')}
+
+        git add terraform.tfvars || true
+        git commit -m "ci: add rendered terraform.tfvars for ${BRANCH_NAME}" || true
+
+        git push -u origin ${BRANCH_NAME}
+        """
+    }
+
+    stage('Render variables') {
+      steps {
+        withEnv([
+          "ZONE=${params.ZONE}",
+          "REGION=${params.REGION}",
+          "RESOURCE=${params.RESOURCE}",
+          "NAME=${params.NAME}",
+          "STATE_BUCKET=${env.STATE_BUCKET}",
+          "STATE_KEY_PREFIX=branches/${BRANCH_NAME}"
+        ]) {
+          sh 'chmod +x scripts/update_files.sh && scripts/update_files.sh'
+          sh 'git add terraform.tfvars && git commit -m "ci: add rendered terraform.tfvars for ${BRANCH_NAME}" || true'
+          // push branch to remote
+          sh """
+            git remote set-url origin https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@${env.GIT_URL.replaceFirst('https?://','')}
+            git push -u origin ${BRANCH_NAME}
+          """
+        }
+      }
+    }
+
+    stage('Terraform Init') {
+        steps {
+            withCredentials([[$class: 'AmazonWebServicesCredentialsBinding',credentialsId: 'aws-creds-id']])
+            {
+                sh '''
+                export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+                export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+
+                BACKEND_KEY="${STATE_KEY_PREFIX}/${BRANCH_NAME}.tfstate"
+
+                terraform init \
+                    -input=false \
+                    -backend-config="bucket=${STATE_BUCKET}" \
+                    -backend-config="key=${BACKEND_KEY}" \
+                    -backend-config="region=${REGION}"
+                '''
+        }
+      }
+    }
+
+    stage('Terraform Action') {
+      steps {
+        withCredentials([usernamePassword(credentialsId: 'aws-creds-id', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
+          script {
+            def tfAction = params.ACTION
+            if (tfAction == 'plan') {
+              sh "terraform plan -var-file=terraform.tfvars -out=tfplan"
+            } else if (tfAction == 'apply') {
+              sh "terraform apply -auto-approve tfplan || terraform apply -auto-approve -var-file=terraform.tfvars"
+            } else if (tfAction == 'destroy') {
+              sh "terraform destroy -auto-approve -var-file=terraform.tfvars"
+            } else {
+              error "Unknown ACTION: ${tfAction}"
+            }
+          }
+        }
+      }
+    }
+  }
+
+  post {
+    always {
+      archiveArtifacts artifacts: 'terraform.tfvars', fingerprint: true
+      
+    }
+    success {
+      echo "Terraform ${params.ACTION} completed for branch ${BRANCH_NAME}"
+    }
+    failure {
+      echo "Terraform ${params.ACTION} failed for branch ${BRANCH_NAME}"
+    }
+  }
+}
+

@@ -54,7 +54,5 @@ def call (String regiSel, String res_sel, String res_na) {
             break
         }
     }
-    echo "${regiSel}"
-    echo "${res_sel}"
-    echo "${res_na}"
+    
 }
