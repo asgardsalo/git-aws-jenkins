@@ -25,5 +25,7 @@ def call (String regiSel, String res_sel, String res_na) {
     res_sel = resources[params.resource] ?: error("unknown resource ${params.resource}")
     echo "${regiSel}"
     echo "${res_sel}"
+    echo "${res_na}"
+    
     }
 }
