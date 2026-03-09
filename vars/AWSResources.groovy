@@ -23,9 +23,10 @@ def call (String regiSel, String res_sel, String res_na) {
         ]
     regiSel = regions[params.region] ?: error("unknown region ${params.region}")
     res_sel = resources[params.resource] ?: error("unknown resource ${params.resource}")
+    res_na = params.res_name ?: error("resource name is required")
     echo "${regiSel}"
     echo "${res_sel}"
     echo "${res_na}"
-    
+
     }
 }
