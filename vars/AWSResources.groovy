@@ -1,4 +1,4 @@
-def call(Map region, Map resource) {
+def call(String region, String resource) {
     def regions = [
         'N. Virginia' : 'us-east-1',
         'Ohio'        : 'us-east-2',
