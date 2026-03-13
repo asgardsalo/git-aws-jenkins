@@ -32,6 +32,10 @@ def call(String region, String resource) {
     if (!res_sel) {
         error "Unknown resource: ${resource}"
     }
+}
+def call(Map config = [:]) {
+    String region = config.region ?: config.REGION ?: ''
+    String resource = config.resource ?: config.RESOURCE ?: ''
 
     return [regiSel, res_sel]
 }
