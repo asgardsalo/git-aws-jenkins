@@ -1,6 +1,3 @@
-// helper that returns translated values for region and resource
-// call: def (regiSel, res_sel) = AWSResources(params.region, params.resource)
-
 def call(String region, String resource) {
     def regions = [
         'N. Virginia' : 'us-east-1',
@@ -32,6 +29,4 @@ def call(String region, String resource) {
     if (!res_sel) {
         error "Unknown resource: ${resource}"
     }
-
-    return [regiSel, res_sel]
 }
