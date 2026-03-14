@@ -1,20 +1,22 @@
-@Library('git-aws-repo@jenkins-terraform') _
+@Library ('git-aws-repo@jenkins-terraform') _
+
+def validated = AWSResources(params)
 
 pipeline {
-    agent any
+  agent any
 
     parameters {
-        choice(name: 'tf_options',
+        choice(name: 'ACTION',
                choices: ['plan','apply','destroy'],
                description: 'terraform action to perform')
-        string(name: 'zone', defaultValue: '', description: 'AWS availability zone')
-        choice(name: 'region',
+        string(name: 'ZONE', defaultValue: '', description: 'AWS availability zone')
+        choice(name: 'REGION',
                choices: ['N. Virginia','Ohio','...'],
                description: 'AWS region')
-        choice(name: 'resource',
+        choice(name: 'RESOURCE',
                choices: ['vpc','instance','container','s3'],
                description: 'resource type')
-        string(name: 'name', defaultValue: '', description: 'resource name')
+        string(name: 'NAME', defaultValue: '', description: 'resource name')
     }
 
     stages {
@@ -24,26 +26,38 @@ pipeline {
                     
                     def validated = AWSResources(params.region, params.resource)
                     echo "Validated parameters: ${validated}"
-                    env.aws_region   = validated[0]
-                    env.aws_resource = validated[1]
-                    env.aws_name     = params.name
-
+                    env.AWS_REGION   = validated[0]
+                    env.AWS_RESOURCE = validated[1]
+                    env.RESOURCE_NAME = params.NAME
+                    
                     def missing = []
-                    if (!params.zone)   missing << 'zone'
-                    if (!params.name)   missing << 'name'
+                    if (!params.ZONE)   missing << 'zone'
+                    if (!params.NAME)   missing << 'name'
                     if (missing) error("Missing: ${missing.join(', ')}")
                 }
             }
         }
 
-        stage('Render variables') {
-            steps {
-                script {
-                    // your existing templating script can consume the three env vars
-                    sh 'chmod +x scripts/update_files.sh && scripts/update_files.sh'
-                }
-            }
+    stage('Render variables') {
+      steps {
+        withEnv([
+          "ZONE=${params.ZONE}",
+          "REGION=${params.REGION}",
+          "RESOURCE=${params.RESOURCE}",
+          "NAME=${params.NAME}",
+          "STATE_BUCKET=${env.STATE_BUCKET}",
+          "STATE_KEY_PREFIX=branches/${BRANCH_NAME}"
+        ]) {
+          sh 'chmod +x scripts/update_files.sh && scripts/update_files.sh'
+          sh 'git add terraform.tfvars && git commit -m "ci: add rendered terraform.tfvars for ${BRANCH_NAME}" || true'
+          // push branch to remote
+          sh """
+            git remote set-url origin https://${GIT_CREDENTIALS_USR}:${GIT_CREDENTIALS_PSW}@${env.GIT_URL.replaceFirst('https?://','')}
+            git push -u origin ${BRANCH_NAME}
+          """
         }
+      }
+    }
 
         stage('Terraform Init') {
             steps {
@@ -54,10 +68,10 @@ pipeline {
             }
         }
 
-        stage('Terraform ${params.tf_options.capitalize()}') {
+        stage('Terraform ${params.ACTION.capitalize()}') {
             steps {
                 script {
-                    switch (params.tf_options) {
+                    switch (params.ACTION) {
                       case 'plan':
                           terraformPlan()
                           break
@@ -68,7 +82,7 @@ pipeline {
                           terraformDestroy()
                           break
                       default:
-                          error("Unknown action ${params.tf_options}")
+                          error("Unknown action ${params.ACTION}")
                     }
                 }
             }
@@ -81,7 +95,9 @@ pipeline {
             cleanWs()
         }
         success {
-            echo "${params.tf_options} completed for branch ${env.BRANCH_NAME}"
+            echo "${params.ACTION} completed for branch ${env.BRANCH_NAME}"
         }
     }
+  }
 }
+
