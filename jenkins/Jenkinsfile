@@ -5,32 +5,37 @@ def validated = AWSResources(params)
 pipeline {
   agent any
 
-  stages {
-    stage('Checkout') {
-      steps {
-        checkout scm
-      }
+    parameters {
+        choice(name: 'ACTION',
+               choices: ['plan','apply','destroy'],
+               description: 'terraform action to perform')
+        string(name: 'ZONE', defaultValue: '', description: 'AWS availability zone')
+        choice(name: 'REGION',
+               choices: ['N. Virginia','Ohio','...'],
+               description: 'AWS region')
+        choice(name: 'RESOURCE',
+               choices: ['vpc','instance','container','s3'],
+               description: 'resource type')
+        string(name: 'NAME', defaultValue: '', description: 'resource name')
     }
 
-    stage('Validate Input') {
-      steps {
-        script {
-          validated = AWSResources(params)
-          echo "Validated parameters: ${validated}"
-        }
-      }
-    }
-    
-    stage('Create Branch') {
-      steps {
-        script {
-          BRANCH_NAME = "feature/${validated.resource}-${validated.name}-${env.BUILD_ID}"
-
-          sh """
-            git config user.email "jenkins@ci.local"
-            git config user.name "Jenkins CI"
-            git checkout -b ${BRANCH_NAME}
-          """
+    stages {
+        stage('Validate Input') {
+            steps {
+                script {
+                    
+                    def validated = AWSResources(params.region, params.resource)
+                    echo "Validated parameters: ${validated}"
+                    env.AWS_REGION   = validated[0]
+                    env.AWS_RESOURCE = validated[1]
+                    env.RESOURCE_NAME = params.NAME
+                    
+                    def missing = []
+                    if (!params.ZONE)   missing << 'zone'
+                    if (!params.NAME)   missing << 'name'
+                    if (missing) error("Missing: ${missing.join(', ')}")
+                }
+            }
         }
       }
     }
@@ -39,13 +44,6 @@ pipeline {
         sh """
         # Rewrite remote URL to include token
         git remote set-url origin https://${GIT_USER}:${GIT_TOKEN}@${env.GIT_URL.replaceFirst('https?://','')}
-
-        git add terraform.tfvars || true
-        git commit -m "ci: add rendered terraform.tfvars for ${BRANCH_NAME}" || true
-
-        git push -u origin ${BRANCH_NAME}
-        """
-    }
 
     stage('Render variables') {
       steps {
@@ -88,19 +86,23 @@ pipeline {
       }
     }
 
-    stage('Terraform Action') {
-      steps {
-        withCredentials([usernamePassword(credentialsId: 'aws-creds-id', usernameVariable: 'AWS_ACCESS_KEY_ID', passwordVariable: 'AWS_SECRET_ACCESS_KEY')]) {
-          script {
-            def tfAction = params.ACTION
-            if (tfAction == 'plan') {
-              sh "terraform plan -var-file=terraform.tfvars -out=tfplan"
-            } else if (tfAction == 'apply') {
-              sh "terraform apply -auto-approve tfplan || terraform apply -auto-approve -var-file=terraform.tfvars"
-            } else if (tfAction == 'destroy') {
-              sh "terraform destroy -auto-approve -var-file=terraform.tfvars"
-            } else {
-              error "Unknown ACTION: ${tfAction}"
+        stage('Terraform ${params.ACTION.capitalize()}') {
+            steps {
+                script {
+                    switch (params.ACTION) {
+                      case 'plan':
+                          terraformPlan()
+                          break
+                      case 'apply':
+                          terraformApply()
+                          break
+                      case 'destroy':
+                          terraformDestroy()
+                          break
+                      default:
+                          error("Unknown action ${params.ACTION}")
+                    }
+                }
             }
           }
         }
@@ -108,16 +110,14 @@ pipeline {
     }
   }
 
-  post {
-    always {
-      archiveArtifacts artifacts: 'terraform.tfvars', fingerprint: true
-      
-    }
-    success {
-      echo "Terraform ${params.ACTION} completed for branch ${BRANCH_NAME}"
-    }
-    failure {
-      echo "Terraform ${params.ACTION} failed for branch ${BRANCH_NAME}"
+    post {
+        always {
+            archiveArtifacts artifacts: 'terraform.tfvars', fingerprint: true
+            cleanWs()
+        }
+        success {
+            echo "${params.ACTION} completed for branch ${env.BRANCH_NAME}"
+        }
     }
   }
 }

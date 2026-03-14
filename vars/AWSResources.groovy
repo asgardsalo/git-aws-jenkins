@@ -29,4 +29,9 @@ def call(String region, String resource) {
     if (!res_sel) {
         error "Unknown resource: ${resource}"
     }
+
+    def regiSel = regions[region] ?: error("unknown region '${region}'")
+    def res_sel = resources[resource] ?: error("unknown resource '${resource}'")
+
+    return [regiSel, res_sel]
 }
