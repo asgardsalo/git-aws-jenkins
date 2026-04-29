@@ -1,7 +1,7 @@
 /*
  Simple standalone test for AWSResources.groovy
  Run from the project root with:
-   groovy AWSResourcesTest.groovy
+   groovy vars/AWSResourcesTest.groovy
 */
 
 // Prepare binding with a stub for Jenkins 'error' step
@@ -9,8 +9,8 @@ Binding binding = new Binding()
 binding.setVariable('error', { String msg -> throw new RuntimeException(msg) })
 
 GroovyShell shell = new GroovyShell(binding)
-File scriptFile = new File('AWSResources.groovy')
-assert scriptFile.exists() : "AWSResources.groovy not found. Run this test from the project root."
+File scriptFile = new File('vars/AWSResources.groovy')
+assert scriptFile.exists() : "vars/AWSResources.groovy not found. Run this test from the project root."
 
 def aws = shell.parse(scriptFile)
 
@@ -23,6 +23,8 @@ assert aws.call('Sydney', 'container') == ['ap-southeast-2', 'container']
 assert aws.call('N. California', 'instance') == ['us-west-1', 'instance']
 assert aws.call('N. Carolina', 'instance') == ['us-west-1', 'instance'] // alias
 assert aws.call('São Paulo', 's3') == ['sa-east-1', 's3']
+assert aws.call([REGION: 'London', RESOURCE: 'vpc']) == ['eu-west-2', 'vpc']
+assert aws.call([region: 'Frankfurt', resource: 'container']) == ['eu-central-1', 'container']
 
 // Error cases
 try {
